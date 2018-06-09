@@ -2,11 +2,12 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:ads="http://schemas.android.com/apk/res-auto"
     android:id="@+id/main_activity_container"
     android:background="@color/colorAccent"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+
     tools:context=".MainActivity">
 
     <!--<TextView-->
@@ -21,13 +22,7 @@
         <!--android:id="@+id/txt_azimuth"-->
         <!--/>-->
 
-    <ImageView
-        android:layout_centerVertical="true"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:src="@drawable/compass"
-        android:id="@+id/img_compass"
-        />
+
 
     <TextView
         android:id="@+id/latitude_text"
@@ -44,7 +39,7 @@
         android:layout_height="wrap_content"
         android:layout_marginLeft="10dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="20dp"
         android:textIsSelectable="true"
         android:textSize="16sp" />
 
@@ -54,20 +49,61 @@
         android:layout_height="wrap_content"
         android:layout_marginLeft="10dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="48dp"
+        android:layout_marginTop="40dp"
         android:textIsSelectable="true"
         android:textSize="16sp" />
 
-    <Button
+    <ImageView
+        android:id="@+id/img_compass"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignTop="@+id/latitude_text"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+
+        android:src="@drawable/compass" />
+
+
+    <!--<Button-->
+        <!--android:id="@+id/location"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_above="@+id/adView"-->
+        <!--android:text="GPS Location Tracker" />-->
+
+
+    <ImageButton
         android:id="@+id/location"
+        android:layout_width="85dp"
+        android:layout_height="104dp"
+        android:layout_below="@+id/latitude_text"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="5dp"
+        app:srcCompat="@drawable/gpsbut"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="5dp" />
+
+
+    <com.google.android.gms.ads.AdView
+        xmlns:ads="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/adView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
         android:layout_alignParentBottom="true"
-        android:layout_alignStart="@+id/img_compass"
-        android:layout_alignLeft="@+id/img_compass"
-        android:layout_marginBottom="20dp"
 
-        android:text="GPS Location Tracker" />
+        ads:adSize="SMART_BANNER"
+        ads:adUnitId="@string/banner_ad_unit_id" />
+
+
+    <!--<ImageButton-->
+        <!--android:id="@+id/location"-->
+        <!--android:layout_width="85dp"-->
+        <!--android:layout_height="85dp"-->
+        <!--android:layout_alignTop="@+id/latitude_text"-->
+        <!--android:layout_alignEnd="@+id/img_compass"-->
+        <!--ads:srcCompat="@drawable/gpsbuttontrack" />-->
+
 
     <!--<ProgressBar-->
         <!--android:id="@+id/progress_bar"-->

@@ -4,11 +4,14 @@ import android.*;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -16,15 +19,29 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.animation.LinearInterpolator;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.avenueinfotech.compasslocation.utils.GPSTracker;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.InterstitialAd;
+import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResult;
+import com.google.android.gms.location.LocationSettingsStates;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -52,26 +69,147 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private int markerCount;
 
+    private static GPSTracker gps;
+
+    private AdView mAdView;
+
+    private InterstitialAd mInterstitialAd;
+
+    public final int REQUEST_ID_MULTIPLE_PERMISSIONS = 1;
+
+
+    String[] PERMISSIONS = {android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.WRITE_EXTERNAL_STORAGE, android.Manifest.permission.READ_EXTERNAL_STORAGE};
+
+    private FusedLocationProviderClient mFusedLocationClient;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
         setContentView(R.layout.activity_maps);
+//        setContentView(R.layout.activity_maps);
+        MobileAds.initialize(getApplicationContext(), "ca-app-pub-1183672799205641~2981952761");
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+
+
+
+
+//
+
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
 
         //Check If Google Services Is Available
         if (getServicesAvailable()) {
             // Building the GoogleApi client
             buildGoogleApiClient();
             createLocationRequest();
-            Toast.makeText(this, "Google Service Is Available!!", Toast.LENGTH_SHORT).show();
+//            Toast.makeText(this, "Google Service Is Available!!", Toast.LENGTH_SHORT).show();
         }
 
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+        gps = new GPSTracker(this);
+
+        if(!hasPermissions(this, PERMISSIONS)){
+            ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_ID_MULTIPLE_PERMISSIONS);
+        } else {
+
+            if (!gps.canGetLocation()) {
+                switchGPS();
+            }
+
+//            GeneralUtils.createDirectory();
+        }
+
+
+//        // Load an ad into the AdMob banner view.
+//        adView = (AdView) findViewById(R.id.adView);
+//
+//        AdRequest adRequest = new AdRequest.Builder()
+//                .setRequestAgent("android_studio:ad_template").build();
+//        adView.loadAd(adRequest);
+//
+
+        mAdView = findViewById(R.id.adView);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mAdView.loadAd(adRequest);
+
+
+//        mInterstitialAd = new InterstitialAd(this);
+//        mInterstitialAd.setAdUnitId("ca-app-pub-1183672799205641/8564096630");
+
+        mInterstitialAd = new InterstitialAd(this);
+        mInterstitialAd.setAdUnitId("ca-app-pub-1183672799205641/8564096630");
+        mInterstitialAd.loadAd(new AdRequest.Builder().build());
+
     }
 
+    public static boolean hasPermissions(Context context, String... permissions) {
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
+            for (String permission : permissions) {
+                if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
+    public void switchGPS() {
+        {
+            LocationRequest locationRequest = LocationRequest.create();
+            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            locationRequest.setInterval(1000);
+            locationRequest.setFastestInterval(5 * 1000);
+            LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                    .addLocationRequest(locationRequest);
+
+            // **************************
+            builder.setAlwaysShow(true); // this is the key ingredient
+            // **************************
+
+            PendingResult<LocationSettingsResult> result = LocationServices.SettingsApi
+                    .checkLocationSettings(mGoogleApiClient, builder.build());
+            result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
+                @Override
+                public void onResult(LocationSettingsResult result) {
+                    final Status status = result.getStatus();
+                    final LocationSettingsStates state = result
+                            .getLocationSettingsStates();
+                    switch (status.getStatusCode()) {
+                        case LocationSettingsStatusCodes.SUCCESS:
+                            // All location settings are satisfied. The client can
+                            // initialize location
+                            // requests here.
+                            break;
+                        case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                            // Location settings are not satisfied. But could be
+                            // fixed by showing the user
+                            // a dialog.
+                            try {
+                                // Show the dialog by calling
+                                // startResolutionForResult(),
+                                // and check the result in onActivityResult().
+                                status.startResolutionForResult(MapsActivity.this, REQUEST_LOCATION);
+                            } catch (IntentSender.SendIntentException e) {
+                                // Ignore the error.
+                            }
+                            break;
+                        case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                            // Location settings are not satisfied. However, we have
+                            // no way to fix the
+                            // settings so we won't show the dialog.
+                            break;
+                    }
+                }
+            });
+        }
+    }
 
 
     @Override
@@ -83,6 +221,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
 //        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
         mMap.getUiSettings().setZoomControlsEnabled(true);
+        mMap.getUiSettings().isCompassEnabled();
+        mMap.getUiSettings().isZoomControlsEnabled();
         mMap.getUiSettings().setCompassEnabled(true);
     }
 
@@ -140,7 +280,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Dialog dialog = api.getErrorDialog(this, isAvailable, 0);
             dialog.show();
         } else {
-            Toast.makeText(this, "Cannot Connect To Play Services", Toast.LENGTH_SHORT).show();
+//            Toast.makeText(this, "Cannot Connect To Play Services", Toast.LENGTH_SHORT).show();
         }
         return false;
     }
@@ -207,8 +347,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             } else {
 
-                Toast.makeText(this, "Couldn't get the location. Make sure location is enabled on the device",
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Enable GPS location on the device for tracking",
+                        Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -242,8 +382,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_LOCATION);
         } else {
-//            LocationServices.FusedLocationApi.requestLocationUpdates(
-//                    mGoogleApiClient, mLocationRequest,  this);
+            LocationServices.FusedLocationApi.requestLocationUpdates(
+                    mGoogleApiClient, mLocationRequest,  this);
         }
     }
 
@@ -251,6 +391,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void stopLocationUpdates() {
         LocationServices.FusedLocationApi.removeLocationUpdates(
                 mGoogleApiClient, this);
+
     }
 
     @Override
@@ -266,6 +407,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onConnectionSuspended(int arg0) {
         mGoogleApiClient.connect();
+        stopLocationUpdates();
     }
 
     @Override
@@ -279,7 +421,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Assign the new location
         mLastLocation = location;
 
-        Toast.makeText(getApplicationContext(), "Location changed!",
+        Toast.makeText(getApplicationContext(), "Location changed",
                 Toast.LENGTH_SHORT).show();
 
         // Displaying the new location on UI
